@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 
 declare_id!("HCqcWhgw4SCm1wdMYgbzi9npvssyoVUFRSX3tnGovnrv");
 
+mod error;
 mod instructions;
 mod state;
 
@@ -14,17 +15,7 @@ pub mod reddit_dapp {
 
     pub fn user_profile(ctx: Context<CreateUserProfile>, username: String) -> Result<()> {
         let bump = ctx.bumps.user_pda;
-        ctx.accounts.create_profile(username, bump)
-    }
-
-    pub fn create_merkle_pda(
-        ctx: Context<CreateMerkleRoot>,
-        root: String,
-        batch_id: u64,
-        total_posts: u16,
-    ) -> Result<()> {
-        let bump = ctx.bumps.merkle_batch_pda;
-        ctx.accounts
-            .create_merkle_root(root, batch_id, total_posts, bump)
+        let vault_bump = ctx.bumps.user_vault;
+        ctx.accounts.create_profile(username, bump,vault_bump)
     }
 }
