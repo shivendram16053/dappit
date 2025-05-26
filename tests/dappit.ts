@@ -1,12 +1,12 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
-import { RedditDapp } from "../target/types/reddit_dapp";
+import { Dappit } from "../target/types/dappit";
 
-describe("reddit-dapp", () => {
+describe("dappit", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.RedditDapp as Program<RedditDapp>;
+  const program = anchor.workspace.dappit as Program<Dappit>;
 
   it("Is initialized!", async () => {
     // Add your test here.
