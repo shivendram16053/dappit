@@ -1,8 +1,13 @@
+use anchor_lang::prelude::*;
+use anchor_lang::solana_program::example_mocks::solana_sdk::system_program;
+use anchor_lang::solana_program::{
+    program::invoke_signed,
+    rent::Rent,
+    system_instruction::{create_account},
+};
+
 use crate::error::CustomError;
 use crate::state::UserProfile;
-use anchor_lang::prelude::*;
-use anchor_lang::solana_program::program::invoke_signed;
-use anchor_lang::solana_program::system_instruction::create_account;
 
 #[derive(Accounts)]
 pub struct CreateUserProfile<'info> {
@@ -11,17 +16,17 @@ pub struct CreateUserProfile<'info> {
 
     #[account(
         init,
-        payer=user,
-        space=UserProfile::INIT_SPACE +8,
-        seeds =[b"user_profile",user.key().as_ref()],
+        payer = user,
+        space = UserProfile::INIT_SPACE + 8,
+        seeds = [b"user_profile", user.key().as_ref()],
         bump,
     )]
     pub user_pda: Account<'info, UserProfile>,
 
     #[account(
         mut,
-        seeds =[b"user_vault",user.key().as_ref()],
-        bump
+        seeds = [b"user_vault", user.key().as_ref()],
+        bump,
     )]
     pub user_vault: AccountInfo<'info>,
 
@@ -43,24 +48,27 @@ impl<'info> CreateUserProfile<'info> {
             user_vault: *self.user_vault.key,
             vault_bump,
             bump,
+            vote_bitmap: vec![0u8; 512], // initialize with 512 zeros
         });
 
-        let deposit_amount = 30_000_000;
+        let deposit_amount = 40_000_000;
 
         require!(
-            self.user.lamports() >= deposit_amount,
+            **self.user.lamports.borrow() >= deposit_amount,
             CustomError::InsufficientLamports
         );
 
         let rent = Rent::get()?;
         let required_lamports = rent.minimum_balance(0);
 
+        let total_lamports = required_lamports + deposit_amount;
+
         let create_account_ix = create_account(
-            &self.user.key(),
-            &self.user_vault.key(),
-            required_lamports + deposit_amount,
+            self.user.key,
+            self.user_vault.key,
+            total_lamports,
             0,
-            &anchor_lang::system_program::ID,
+            &system_program::ID,
         );
 
         invoke_signed(
@@ -70,7 +78,7 @@ impl<'info> CreateUserProfile<'info> {
                 self.user_vault.to_account_info(),
                 self.system_program.to_account_info(),
             ],
-            &[&[b"user_vault", self.user.key().as_ref(), &[vault_bump]]],
+            &[&[b"user_vault", self.user.key.as_ref(), &[vault_bump]]],
         )?;
 
         Ok(())
