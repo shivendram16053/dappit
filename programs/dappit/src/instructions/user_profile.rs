@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::example_mocks::solana_sdk::system_program;
+use anchor_lang::solana_program::system_program;
 use anchor_lang::solana_program::{
     program::invoke_signed,
     rent::Rent,
@@ -23,6 +23,7 @@ pub struct CreateUserProfile<'info> {
     )]
     pub user_pda: Account<'info, UserProfile>,
 
+    /// CHECK: This is the user’s vault PDA. No need for type checks; it's only used for SOL transfers.
     #[account(
         mut,
         seeds = [b"user_vault", user.key().as_ref()],

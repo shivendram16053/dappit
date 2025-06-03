@@ -9,7 +9,7 @@ mod state;
 use instructions::*;
 
 #[program]
-pub mod reddit_dapp {
+pub mod dappit {
 
     use crate::error::CustomError;
 
