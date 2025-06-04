@@ -15,6 +15,10 @@ describe("dappit", () => {
   let user_vault : anchor.web3.PublicKey;
   let post_pda : anchor.web3.PublicKey;
   let voter = anchor.web3.Keypair.generate();
+  let voter_profile:anchor.web3.PublicKey;
+  let voter_profile_bump:number;
+  let voter_vault:anchor.web3.PublicKey;
+  let voter_vault_bump:number;
   let user_profile_bump:number;
   let user_vault_bump:number;
   let post_pda_bump:number;
@@ -49,6 +53,21 @@ describe("dappit", () => {
       [
         Buffer.from("user_vault"),
         user.publicKey.toBuffer(),
+      ],
+      program.programId,
+    );
+    [voter_profile , voter_profile_bump] = anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_profile"),
+        voter.publicKey.toBuffer()
+      ],
+      program.programId
+    );
+
+    [voter_vault,voter_vault_bump]=anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_vault"),
+        voter.publicKey.toBuffer(),
       ],
       program.programId,
     );
@@ -96,7 +115,45 @@ describe("dappit", () => {
       assert.strictEqual(userProfileAccount.voteBitmap.length, 512, "vote_bitmap length mismatch");
       assert.ok(userProfileAccount.voteBitmap.every(b => b === 0), "vote_bitmap is not zeroed");
       assert.ok(Math.abs(userProfileAccount.createdAt.toNumber() - now) < 30, "created_at is not recent");
-      assert.equal(userProfileAccount.username,"shibu0x","Username not stored");
+    } catch (error) {
+      console.error("Error while creating user_profile:", error);
+      throw error;
+    }
+  });
+
+  it("Should Initialize voter_profile_pda and voter_vault", async () => {
+  try {
+    const tx = await program.methods
+      .userProfile("shibu0xsol")
+      .accounts({
+        user: voter.publicKey,
+        //@ts-ignore
+        userPda: voter_profile,
+        userVault: voter_vault,
+        systemProgram: anchor.web3.SystemProgram.programId,
+      })
+      .signers([voter])
+      .rpc();
+
+      console.log("this is the transaction",tx)
+
+      const voterProfileAccount = await program.account.userProfile.fetch(voter_profile);
+    
+      const vaultBalance = await program.provider.connection.getBalance(voter_vault);
+      const now = Math.floor(Date.now() / 1000);
+
+      // Assertions
+      assert.strictEqual(voterProfileAccount.username, "shibu0xsol", "Username is not correctly set.");
+      assert.ok(voterProfileAccount.authority.equals(voter.publicKey), "Authority is not set correctly.");
+      assert.ok(voterProfileAccount.userVault.equals(voter_vault), "User vault not set correctly.");
+      assert.ok(vaultBalance >= 40_000_000, `User vault balance (${vaultBalance}) is less than 0.04 SOL`);
+      assert.strictEqual(voterProfileAccount.karma.toNumber(), 0, "Karma should be 0");
+      assert.strictEqual(voterProfileAccount.totalPosts.toNumber(), 0, "Total posts should be 0");
+      assert.strictEqual(voterProfileAccount.totalUpvotes.toNumber(), 0, "Total upvotes should be 0");
+      assert.strictEqual(voterProfileAccount.totalDownvotes.toNumber(), 0, "Total downvotes should be 0");
+      assert.strictEqual(voterProfileAccount.voteBitmap.length, 512, "vote_bitmap length mismatch");
+      assert.ok(voterProfileAccount.voteBitmap.every(b => b === 0), "vote_bitmap is not zeroed");
+      assert.ok(Math.abs(voterProfileAccount.createdAt.toNumber() - now) < 30, "created_at is not recent");
     } catch (error) {
       console.error("Error while creating user_profile:", error);
       throw error;
@@ -119,6 +176,7 @@ describe("dappit", () => {
 
     const postPdaAccount = await program.account.post.fetch(post_pda);
     const now = Math.floor(Date.now() / 1000);
+    const userPdaAccount = await program.account.userProfile.fetch(user_profile);
 
 
     assert.ok(postPdaAccount.creator.equals(user.publicKey),"Creator of the post is not correct");
@@ -126,5 +184,57 @@ describe("dappit", () => {
     assert.strictEqual(postPdaAccount.upvote.toNumber(),0,"Upvotes should be 0");
     assert.strictEqual(postPdaAccount.downvote.toNumber(),0,"Downvotes should be 0");
     assert.ok(Math.abs(postPdaAccount.createdAt.toNumber() - now) < 30, "created_at is not recent");
+    assert.strictEqual(userPdaAccount.totalPosts.toNumber(),1,"Total Post should increase by 1")
+  })
+
+  it("Should be able to upvote the post",async()=>{
+     const txSig = await program.methods
+      .voteOnPostHandler(ipfs_hash,"upvote")
+      .accounts({
+        voter:voter.publicKey,
+        creator:user.publicKey,
+        postPda:post_pda,
+        // @ts-ignore
+        userPda:voter_profile,
+        systemProgram:anchor.web3.SystemProgram.programId,
+      })
+      .signers([voter])
+      .rpc()
+
+    console.log("tx for voting",txSig);
+
+    const postPdaAccount = await program.account.post.fetch(post_pda);
+    const userPdaAccount = await program.account.userProfile.fetch(voter_profile);
+
+    // assert.strictEqual(userPdaAccount.totalUpvotes.toNumber(),1,"The upvote should have increased for user pda");
+    assert.strictEqual(postPdaAccount.upvote.toNumber(),1,"The upvote should have increased for post pda");
+    assert.strictEqual(userPdaAccount.totalUpvotes.toNumber(),1,"The upvotes should be up for user");
+    assert.strictEqual(postPdaAccount.downvote.toNumber(), 0, "Downvotes should remain 0");
+    assert.strictEqual(userPdaAccount.totalDownvotes.toNumber(), 0, "User downvotes should remain 0");
+    assert.strictEqual(userPdaAccount.karma.toNumber(), 3, "User karma should increase by 3");    
+  })
+
+
+  it("Should be able to downvote the post",async()=>{
+     const txSig = await program.methods
+      .voteOnPostHandler(ipfs_hash,"upvote")
+      .accounts({
+        voter:voter.publicKey,
+        creator:user.publicKey,
+        postPda:post_pda,
+        // @ts-ignore
+        userPda:voter_profile,
+        systemProgram:anchor.web3.SystemProgram.programId,
+      })
+      .signers([voter])
+      .rpc()
+
+    console.log("tx for voting",txSig);
+
+    const postPdaAccount = await program.account.post.fetch(post_pda);
+    const userPdaAccount = await program.account.userProfile.fetch(voter_profile);
+
+    // assert.strictEqual(userPdaAccount.totalUpvotes.toNumber(),1,"The upvote should have increased for user pda");
+    assert.strictEqual(postPdaAccount.upvote.toNumber(),1,"The upvote should have increased for post pda");
   })
 });

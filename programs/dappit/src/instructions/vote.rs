@@ -9,16 +9,20 @@ pub enum VoteType {
 }
 
 #[derive(Accounts)]
-#[instruction(ipfs_hash: String,creator:Pubkey)]
+#[instruction(ipfs_hash: String)]
 pub struct Vote<'info> {
     #[account(mut)]
     pub voter: Signer<'info>,
+
+    /// CHECK
+    #[account()]
+    pub creator: AccountInfo<'info>,
 
     #[account(
         mut,
         seeds = [
             b"post_pda",
-            creator.as_ref(),
+            creator.key.as_ref(),
             &Sha256::digest(ipfs_hash.as_bytes())[..32]
         ],
         bump
@@ -59,18 +63,21 @@ impl<'info> Vote<'info> {
     }
 
     pub fn vote_on_post_handler(&mut self, ipfs_hash: String, vote: VoteType) -> Result<()> {
+        let user = &mut self.user_pda;
+        let post = &mut self.post_pda;
         let hash_bytes = Sha256::digest(ipfs_hash.as_bytes());
         let post_id = u64::from_le_bytes(
             hash_bytes[..8]
                 .try_into()
                 .map_err(|_| CustomError::InvalidHash)?,
         );
-        let bit_index: usize = post_id as usize;
 
-        let user = &mut self.user_pda;
-        let post = &mut self.post_pda;
+        let max_votes = user.vote_bitmap.len() * 4; // 512*4=2048 votes max
+        let bit_index = (post_id % max_votes as u64) as usize;
 
-        if bit_index >= user.vote_bitmap.len() * 4 {
+        // no need to check out of bound because modulo is applied,
+        // but you can add for safety:
+        if bit_index >= max_votes {
             return Err(CustomError::InvalidPostId.into());
         }
 

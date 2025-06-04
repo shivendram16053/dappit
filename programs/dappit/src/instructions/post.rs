@@ -8,6 +8,13 @@ pub struct PostPDA<'info> {
     #[account(mut)]
     pub creator: Signer<'info>,
 
+     #[account(
+        mut,
+        seeds = [b"user_profile",creator.key().as_ref()],
+        bump
+    )]
+    pub user_pda: Account<'info, UserProfile>,
+
     #[account(
         init,
         payer = creator,
@@ -34,6 +41,9 @@ impl<'info> PostPDA<'info> {
             created_at: Clock::get()?.unix_timestamp,
             bump,
         });
+
+        self.user_pda.karma+=2;
+        self.user_pda.total_posts+=1;
 
         Ok(())
     }
