@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("HCqcWhgw4SCm1wdMYgbzi9npvssyoVUFRSX3tnGovnrv");
+declare_id!("3PowFT1sQGcwNM1MtAkVaWRgpHru5xKeQezYTPBrDCPk");
 
 mod error;
 mod instructions;
@@ -33,6 +33,6 @@ pub mod dappit {
             _ => return Err(CustomError::InvalidVoteType.into()), 
         };
         ctx.accounts.vote_on_post_handler(ipfs_hash,vote_map)
-        
+    
     }
 }
