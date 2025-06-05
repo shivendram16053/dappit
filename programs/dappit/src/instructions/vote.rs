@@ -88,25 +88,29 @@ impl<'info> Vote<'info> {
                 Self::set_vote_bit(&mut user.vote_bitmap, bit_index, VoteType::Upvote);
                 post.upvote += 1;
                 user.karma += 1;
+                user.total_upvotes += 1;
             }
             (None, VoteType::Downvote) => {
                 Self::set_vote_bit(&mut user.vote_bitmap, bit_index, VoteType::Downvote);
                 post.downvote += 1;
-                user.karma -= 1;
+                user.karma += 1;
+                user.total_downvotes += 1;
             }
             (Some(VoteType::Upvote), VoteType::Downvote) => {
                 Self::set_vote_bit(&mut user.vote_bitmap, bit_index, VoteType::Downvote);
-                post.upvote -= 1;
+                post.upvote = post.upvote.saturating_sub(1);
                 post.downvote += 1;
-                user.karma -= 2;
+                user.total_upvotes = user.total_upvotes.saturating_sub(1);
+                user.total_downvotes += 1;
             }
             (Some(VoteType::Downvote), VoteType::Upvote) => {
                 Self::set_vote_bit(&mut user.vote_bitmap, bit_index, VoteType::Upvote);
-                post.downvote -= 1;
+                post.downvote = post.downvote.saturating_sub(1);
                 post.upvote += 1;
-                user.karma += 2;
+                user.total_downvotes = user.total_downvotes.saturating_sub(1);
+                user.total_upvotes += 1;
             }
-            _ => {} // No-op
+            _ => {}
         }
 
         Ok(())

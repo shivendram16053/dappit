@@ -184,7 +184,8 @@ describe("dappit", () => {
     assert.strictEqual(postPdaAccount.upvote.toNumber(),0,"Upvotes should be 0");
     assert.strictEqual(postPdaAccount.downvote.toNumber(),0,"Downvotes should be 0");
     assert.ok(Math.abs(postPdaAccount.createdAt.toNumber() - now) < 30, "created_at is not recent");
-    assert.strictEqual(userPdaAccount.totalPosts.toNumber(),1,"Total Post should increase by 1")
+    assert.strictEqual(userPdaAccount.totalPosts.toNumber(),1,"Total Post should increase by 1");
+    assert.strictEqual(userPdaAccount.karma.toNumber(),2,"User karma should increse by 2")
   })
 
   it("Should be able to upvote the post",async()=>{
@@ -206,18 +207,82 @@ describe("dappit", () => {
     const postPdaAccount = await program.account.post.fetch(post_pda);
     const userPdaAccount = await program.account.userProfile.fetch(voter_profile);
 
-    // assert.strictEqual(userPdaAccount.totalUpvotes.toNumber(),1,"The upvote should have increased for user pda");
+
+    assert.strictEqual(userPdaAccount.totalUpvotes.toNumber(),1,"The upvote should have increased for user pda");
     assert.strictEqual(postPdaAccount.upvote.toNumber(),1,"The upvote should have increased for post pda");
     assert.strictEqual(userPdaAccount.totalUpvotes.toNumber(),1,"The upvotes should be up for user");
     assert.strictEqual(postPdaAccount.downvote.toNumber(), 0, "Downvotes should remain 0");
     assert.strictEqual(userPdaAccount.totalDownvotes.toNumber(), 0, "User downvotes should remain 0");
-    assert.strictEqual(userPdaAccount.karma.toNumber(), 3, "User karma should increase by 3");    
+    assert.strictEqual(userPdaAccount.karma.toNumber(),1,"voter karma should incraese by 1")
+
   })
 
 
   it("Should be able to downvote the post",async()=>{
-     const txSig = await program.methods
-      .voteOnPostHandler(ipfs_hash,"upvote")
+    const provider = anchor.getProvider();
+
+    const voter2 = anchor.web3.Keypair.generate();
+    await provider.connection.confirmTransaction(
+      await provider.connection.requestAirdrop(
+        voter2.publicKey,
+        anchor.web3.LAMPORTS_PER_SOL * 10
+      ),
+      "confirmed"
+    );
+
+    const [voter2Profile,voter2Bump]= await anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_profile"),
+        voter2.publicKey.toBuffer()
+      ],program.programId
+    );
+    const [voter2Vault,voter2VaultBump]= await anchor.web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("user_vault"),
+        voter2.publicKey.toBuffer()
+      ],program.programId
+    );
+
+    const profileTx = await program.methods
+     .userProfile("avhidotsol")
+     .accounts({
+      user:voter2.publicKey,
+      //@ts-ignore
+      userPda:voter2Profile,
+      userVault:voter2Vault,
+      systemProgram:anchor.web3.SystemProgram.programId,
+     })
+     .signers([voter2])
+     .rpc();
+
+     const postTx = await program.methods
+      .voteOnPostHandler(ipfs_hash,"downvote")
+      .accounts({
+        voter:voter2.publicKey,
+        creator:user.publicKey,
+        postPda:post_pda,
+        // @ts-ignore
+        userPda:voter2Profile,
+        systemProgram:anchor.web3.SystemProgram.programId
+      })
+      .signers([voter2])
+      .rpc();
+
+    console.log("downvote tx by 2nd voter",postTx)
+
+    const postPdaAccount = await program.account.post.fetch(post_pda);
+    const userPdaAccount = await program.account.userProfile.fetch(voter2Profile);
+
+    assert.strictEqual(postPdaAccount.upvote.toNumber(),1,"Upvote should not change");
+    assert.strictEqual(postPdaAccount.downvote.toNumber(),1,"Downvote should change to 1");
+    assert.strictEqual(userPdaAccount.totalDownvotes.toNumber(),1,"Downvote of user should increase");
+    assert.strictEqual(userPdaAccount.karma.toNumber(),1,"user karma should increase")
+    
+  })
+
+  it("voter can flip his vote",async()=>{
+    const txSig = await program.methods
+      .voteOnPostHandler(ipfs_hash,"downvote")
       .accounts({
         voter:voter.publicKey,
         creator:user.publicKey,
@@ -234,7 +299,10 @@ describe("dappit", () => {
     const postPdaAccount = await program.account.post.fetch(post_pda);
     const userPdaAccount = await program.account.userProfile.fetch(voter_profile);
 
-    // assert.strictEqual(userPdaAccount.totalUpvotes.toNumber(),1,"The upvote should have increased for user pda");
-    assert.strictEqual(postPdaAccount.upvote.toNumber(),1,"The upvote should have increased for post pda");
+
+    assert.strictEqual(userPdaAccount.totalUpvotes.toNumber(),0,"The upvote should have decreased for user pda");
+    assert.strictEqual(userPdaAccount.totalDownvotes.toNumber(),1,"The downvote should have increased for user pda");
+    assert.strictEqual(postPdaAccount.upvote.toNumber(),0,"The upvote should have decreased for post pda");
+    assert.strictEqual(postPdaAccount.downvote.toNumber(), 2, "Downvotes should increase +1");
   })
 });
