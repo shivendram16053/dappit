@@ -1,29 +1,23 @@
-import { useMemo } from "react";
-import { Connection, PublicKey } from "@solana/web3.js";
-import { Program, AnchorProvider, Idl } from "@coral-xyz/anchor";
-import { useWallet } from "@solana/wallet-adapter-react";
-import idl from "../idl/dappit.json";
+import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
+import { AnchorProvider, Program } from "@coral-xyz/anchor";
+import { Dappit } from "@/idl/dappit";
+import idl from "@/idl/dappit.json";
 
-export const programId = new PublicKey("3PowFT1sQGcwNM1MtAkVaWRgpHru5xKeQezYTPBrDCPk");
 
-export const useAnchor = () => {
-  const wallet = useWallet();
+export function useProgram(): {
+  program: Program<Dappit> | null;
+  provider: AnchorProvider | null;
+} {
+  const wallet = useAnchorWallet();
+  const { connection } = useConnection();
 
-  const connection = useMemo(() => {
-    return new Connection("https://api.devnet.solana.com", "confirmed");
-  }, []);
+  if (!wallet) return { program: null, provider: null };
 
-  const provider = useMemo(() => {
-    if (!wallet?.publicKey || !wallet?.signTransaction) return null;
-    return new AnchorProvider(connection, wallet as any, {
-      commitment: "confirmed",
-    });
-  }, [wallet, connection]);
+  const provider = new AnchorProvider(connection, wallet, {
+    commitment: "confirmed",
+  });
 
-  const program = useMemo(() => {
-    if (!provider) return null;
-    return new Program(idl as Idl, provider);
-  }, [provider]);
+  const program = new Program<Dappit>(idl as Dappit, provider);
 
-  return { connection, provider, program };
-};
+  return { program, provider };
+}
