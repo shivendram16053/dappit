@@ -126,7 +126,6 @@
 .wallet-adapter-modal-wrapper {
   background-color: #000 !important;  /* black modal background */
   color: #fff !important;             /* white text */
-  border-radius: 100%;
 }
 
 .wallet-adapter-modal-title,
@@ -136,12 +135,9 @@
 .wallet-adapter-button-start-icon,
 .wallet-adapter-modal-list-item {
   color: #fff !important;
-    border-radius: 5%;
-
 }
 
 .wallet-adapter-button {
-    border-radius: 100%;
   background-color: rgba(255,255,255,0.05) !important;
   border: 1px solid rgba(255,255,255,0.2) !important;
 }

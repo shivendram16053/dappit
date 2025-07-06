@@ -36,7 +36,7 @@ const Navbar = ({ username }: NavbarProps) => {
                 </span>
               </Link>
             )}
-            <WalletMultiButton className="!bg-primary !text-white !hover:brightness-110 !rounded-xl" />
+            <WalletMultiButton />
           </div>
         </div>
       </div>

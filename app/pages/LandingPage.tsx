@@ -43,7 +43,7 @@ export default function LandingPage() {
 
         {!connected && (
           <div className="mb-6">
-            <WalletMultiButton className="!bg-primary !text-white !rounded-xl" />
+            <WalletMultiButton />
           </div>
         )}
 
