@@ -1,4 +1,5 @@
 "use client";
+
 import React, { FC, ReactNode, useMemo } from "react";
 import {
   ConnectionProvider,
@@ -9,17 +10,15 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
 } from "@solana/wallet-adapter-wallets";
-import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 
 const WalletContextProvider: FC<{ children: ReactNode }> = ({ children }) => {
-  const endpoint = clusterApiUrl("devnet");
+  const endpoint = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
+
+  if (!endpoint) throw new Error("Helius RPC URL is missing");
 
   const wallets = useMemo(
-    () => [
-      new PhantomWalletAdapter(),
-      new SolflareWalletAdapter(),
-    ],
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
     []
   );
 

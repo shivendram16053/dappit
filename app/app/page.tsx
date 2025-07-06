@@ -1,44 +1,51 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
-import LandingPage from '@/pages/LandingPage';
-import Login from '@/pages/Login';
-import Dashboard from '@/pages/Dashboard';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { checkUserProfile } from '@/utils/functions/checkUserProfile';
-import { useProgram } from '@/utils/setup';
+import React, { useEffect, useState } from "react";
+import LandingPage from "@/pages/LandingPage";
+import Login from "@/pages/Login";
+import Dashboard from "@/pages/Dashboard";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { checkUserProfile } from "@/utils/functions/checkUserProfile";
+import { useProgram } from "@/utils/setup";
+import Cookies from "js-cookie";
 
 const Page = () => {
   const { connected, publicKey } = useWallet();
+  const { program } = useProgram();
+
   const [username, setUsername] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const {program}= useProgram();
 
   useEffect(() => {
     const fetchProfile = async () => {
-      if (!publicKey) {
-        localStorage.removeItem("username");
+      if (!connected || !publicKey) {
+        Cookies.remove("username");
         setUsername(null);
         setLoading(false);
         return;
       }
 
+      const cachedUsername = Cookies.get("username");
+      if (cachedUsername) {
+        setUsername(cachedUsername);
+        setLoading(false);
+        return;
+      }
+
       try {
-        if (!program) {
-          setLoading(false);
-          return;
-        }
+        if (!program) return;
+
         const profile = await checkUserProfile(program, publicKey, setLoading);
         if (profile?.username) {
-          localStorage.setItem("username", profile.username);
+          Cookies.set("username", profile.username, { expires: 7 }); // 7 days expiry
           setUsername(profile.username);
         } else {
-          localStorage.removeItem("username");
+          Cookies.remove("username");
           setUsername(null);
         }
       } catch (err) {
         console.error("Profile check failed:", err);
-        localStorage.removeItem("username");
+        Cookies.remove("username");
         setUsername(null);
       } finally {
         setLoading(false);
@@ -46,7 +53,9 @@ const Page = () => {
     };
 
     fetchProfile();
-  }, [connected, publicKey]);
+  }, [connected, publicKey, program]);
+
+  if (loading) return <p className="text-center mt-8 text-gray-500">Loading...</p>;
 
   return (
     <>
