@@ -4,9 +4,9 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Cookies from "js-cookie";
-import Profile from "@/pages/Profile";
+import Dashboard from "@/pages/Dashboard";
 
-const ProfilePage = () => {
+const DashboardPage = () => {
   const { connected } = useWallet();
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ const ProfilePage = () => {
     return <p className="text-center mt-10">Checking access...</p>;
   }
 
-  return <Profile />;
+  return <Dashboard />;
 };
 
-export default ProfilePage;
+export default DashboardPage;

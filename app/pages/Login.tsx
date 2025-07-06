@@ -1,6 +1,6 @@
 "create client"
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { useProgram } from "@/utils/setup";
@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import Navbar from "@/components/ui/bar/Navbar";
 import toast from "react-hot-toast";
 import { registerUser } from "@/utils/functions/createUserProfile";
+import Cookies from "js-cookie";
+
 
 const Login = () => {
   const { program } = useProgram();
@@ -16,10 +18,16 @@ const Login = () => {
   const [username, setUsername] = useState("");
   const [loading, setLoading] = useState(false);
   const [checkingProfile, setCheckingProfile] = useState(true);
+  const didCheckRef = useRef<Record<string, boolean>>({});
+
 
   useEffect(() => {
     const checkUserProfile = async () => {
       if (!program || !publicKey) return;
+
+      const key = publicKey.toBase58();
+      if (didCheckRef.current[key]) return; // prevent repeat
+      didCheckRef.current[key] = true;
 
       try {
         const [userPda] = PublicKey.findProgramAddressSync(
@@ -32,8 +40,8 @@ const Login = () => {
         if (userProfile) {
           router.push("/");
         }
-      } catch (err:any) {
-        console.log("no profile found")
+      } catch (err: any) {
+        console.log("No profile found");
       } finally {
         setCheckingProfile(false);
       }
@@ -41,6 +49,7 @@ const Login = () => {
 
     checkUserProfile();
   }, [program, publicKey]);
+
 
 
 
@@ -63,11 +72,12 @@ const Login = () => {
         throw new Error("Profile registration failed");
       }
       toast.success("Logged in successfully!");
-      router.refresh();
+      Cookies.set("username", username, { expires: 7 });
+      router.push("/dashboard");
     } catch (err: any) {
       console.error("handleRegister error:", err);
       toast.error("Something went wrong while registering");
-    } finally{
+    } finally {
       setLoading(false);
     }
   };
@@ -111,8 +121,8 @@ const Login = () => {
             type="submit"
             disabled={loading || username.trim().length < 3}
             className={`px-6 py-2 rounded-md font-semibold w-full text-white hover:cursor-pointer ${loading || username.trim().length < 3
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-primary"
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-primary"
               }`}
           >
             {loading ? "Creating..." : "Create Profile"}
